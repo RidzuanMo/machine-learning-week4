@@ -1,0 +1,118 @@
+---
+title: "Machine Learning Project - Cousera Week 4"
+author: "Ridzuan Mohamad"
+date: "5/11/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(caret)
+library(kernlab)
+library(randomForest)
+library(rpart)
+library(e1071)
+```
+
+## Overview
+
+## Data Exploratory Analysis
+
+### Dataset Description
+
+###Data Loading, Exploring and Cleansing
+
+The tarining dan test dataset is provided by the data provider and we going to download both dataset form the url (`https://d396qusza40orc.cloudfront.net/predmachlearn/`).
+
+```{r}
+# set the URL for the download
+url_train_data <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+url_test_test <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+# download the datasets
+train.dataset.raw <- read.csv(url(url_train_data), na.strings = c("NA", ""))
+test.dataset.raw <- read.csv(url(url_test_test), na.strings = c("NA", ""))
+```
+
+The downloaded dataset have the same variable which is `r dim(train.dataset.raw)[2]` and difference numbers of observation data. The training dataset have `r dim(train.dataset.raw)[1]` observations data and the test dataset `r dim(test.dataset.raw)[1]` have observations data. It is normal practices to have training dataset is larger than the test dataset.
+
+There are (`r dim(train.dataset.raw)[2]`) variable (predictors) but we only need a few which will contribute to the accuracy of our prediction model later on. Refering to **_Appendix A - Dataset Structure for Raw Dataset_**, we found out there are a lot of variable contain only **NA**, **#DIV/0!** which is need to be remove from the dataset. There are 7 variables is used for data identificatoin such as `X`, `user_name`, `raw_timestamp_part_1`, `raw_timestamp_part_2 `, `cvtd_timestamp `, `new_window` and `num_window` and need to be remove as well.
+
+```{r}
+##Remove NA column & column 1-7 as identifier column
+train.dataset.clean <- train.dataset.raw[, colSums(is.na(train.dataset.raw)) == 0]
+train.dataset.clean <- train.dataset.clean[, -c(1:7)]
+
+test.dataset.clean <- test.dataset.raw[, colSums(is.na(test.dataset.raw)) == 0]
+test.dataset.clean <- test.dataset.clean[, -c(1:7)]
+```
+
+Now, we only have `r dim(train.dataset.clean)[2]` variable for both datasats and store it in the new data frame known as `train.dataset.clean` & `test.dataset.clean`. Detail dataset structure please refer to **_Appendix B - Dataset Structure for Clean Dataset_**
+
+
+```{r}
+table(train.dataset.clean$classe)
+```
+
+###Buidling Prediction Model
+
+```{r}
+inTrain<-createDataPartition(y=train.dataset.clean$classe,p=0.7, list = FALSE)
+trainset<-train.dataset.clean[inTrain,]
+testset<-train.dataset.clean[-inTrain,]
+```
+
+###Random Forest
+
+```{r}
+set.seed(1235)
+mod.rf <- randomForest(classe~.,method="class", data=trainset, 
+                trControl= trainControl(method = "cv",number = 4,allowParallel = TRUE)
+            )
+
+cv.rf<-predict(mod.rf, testset)
+c1<-confusionMatrix(testset$classe, cv.rf)
+c1
+```
+
+###Decision Trees
+
+```{r}
+# model fit
+#decision_tree <- rpart(classe ~ ., data=train.dataset, method="class")
+#fancyRpartPlot(decision_tree)
+```
+
+## Applying Model to Test Data
+
+\newpage
+---
+
+#Appendixies
+
+## Appendix A - Dataset Structure for Raw Dataset 
+
+```{r}
+str(train.dataset.raw)
+```
+
+## Appendix B - Dataset Structure for Raw Dataset 
+
+```{r}
+str(train.dataset.clean)
+```
+
+## Appendix c - Histogram 
+
+```{r, warning=FALSE}
+ggplot(data = train.dataset.clean, aes(x=classe)) +
+    geom_histogram(stat = "count") +
+    scale_x_discrete(name = "classe") +
+    scale_y_continuous(name = "count") +
+    ggtitle("Classes")
+```
