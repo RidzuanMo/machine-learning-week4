@@ -3,8 +3,8 @@ title: "Machine Learning Project - Cousera Week 4"
 author: "Ridzuan Mohamad"
 date: "5/11/2017"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -22,12 +22,16 @@ library(e1071)
 ```
 
 ## 1. Overview
+The objectives of this project is to use the data from accelerometers on the belt, forearm, arm, and dumbbell obtain from 6 participants (“Pedro”, “Jeremy”, “Adelmo”, “Eurico”, “Carlitos” and “Charles”) and to “predict” the manner in which they did the exercise. The 6 participants were asked to perform barbell lifts correctly and incorrectly in 5 different ways. The outcome of the exercises performed by the 6 participants, was recorded into 2 types of data sets, namely, "training" and "test" (“pml-training.csv” and “pml-testing.csv”) from the following URL link source:
+
+1. Training Data: https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+2. Test Data: https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
 
 ## 2. Data Exploratory Analysis
 
 ### 2.1 Data Loading
 
-The training dan test dataset is provided by the data provider and we going to download both dataset form the url (`https://d396qusza40orc.cloudfront.net/predmachlearn/`).
+The training dan test dataset is provided by the data provider and we going to download both dataset from the URL link described above.
 
 ```{r}
 # set the URL for the download
@@ -47,6 +51,7 @@ if (!file.exists(file_training_set) || !file.exists(file_testing_set)){
     download.file(url_test_test, file_testing_set, method="curl")
 }
 
+# load into data.frame
 train.dataset.raw <- read.csv(file_training_set, na.strings = c("NA", ""))
 test.dataset.raw <- read.csv(file_testing_set, na.strings = c("NA", ""))
 ```
@@ -62,6 +67,7 @@ There are (`r dim(train.dataset.raw)[2]`) variable (predictors) but we only need
 train.dataset.clean <- train.dataset.raw[, colSums(is.na(train.dataset.raw)) == 0]
 train.dataset.clean <- train.dataset.clean[, -c(1:7)]
 
+##Remove NA column & column 1-7 as identifier column
 test.dataset.clean <- test.dataset.raw[, colSums(is.na(test.dataset.raw)) == 0]
 test.dataset.clean <- test.dataset.clean[, -c(1:7)]
 ```
@@ -71,6 +77,7 @@ Now, we only have `r dim(train.dataset.clean)[2]` variable for both datasets and
 Exploring the classes data it shows that the _classe A_ have more records compare to other classes. Based on the **_Appendix C - Histrogram_** and the table below; _classe A_ have more than 1000 records compared to other classes.
 
 ```{r}
+## display records into table by classe
 table(train.dataset.clean$classe)
 ```
 
@@ -96,8 +103,12 @@ crossvalidationset <- train.dataset.clean[-inTrain,]
 ```{r}
 set.seed(1235)
 
-model.fit <- randomForest(classe ~ ., data=trainset, method="class", importance=TRUE, proximity=TRUE, ntree=30)
+## create proediction model using Random Forest Algorithm
+model.fit <- randomForest(classe ~ ., data=trainset, method="class", importance=TRUE, 
+                          proximity=TRUE, ntree=30)
 rf.predict <- predict(model.fit, crossvalidationset)
+
+## evaluate prediction model
 confusion.matrix <- confusionMatrix(rf.predict, crossvalidationset$classe)
 ```
 

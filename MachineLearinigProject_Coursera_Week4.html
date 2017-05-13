@@ -125,12 +125,17 @@ $(document).ready(function () {
 
 <div id="overview" class="section level2">
 <h2>1. Overview</h2>
+<p>The objectives of this project is to use the data from accelerometers on the belt, forearm, arm, and dumbbell obtain from 6 participants (“Pedro”, “Jeremy”, “Adelmo”, “Eurico”, “Carlitos” and “Charles”) and to “predict” the manner in which they did the exercise. The 6 participants were asked to perform barbell lifts correctly and incorrectly in 5 different ways. The outcome of the exercises performed by the 6 participants, was recorded into 2 types of data sets, namely, “training” and “test” (“pml-training.csv” and “pml-testing.csv”) from the following URL link source:</p>
+<ol style="list-style-type: decimal">
+<li>Training Data: <a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv" class="uri">https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv</a></li>
+<li>Test Data: <a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv" class="uri">https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv</a></li>
+</ol>
 </div>
 <div id="data-exploratory-analysis" class="section level2">
 <h2>2. Data Exploratory Analysis</h2>
 <div id="data-loading" class="section level3">
 <h3>2.1 Data Loading</h3>
-<p>The tarining dan test dataset is provided by the data provider and we going to download both dataset form the url (<code>https://d396qusza40orc.cloudfront.net/predmachlearn/</code>).</p>
+<p>The training dan test dataset is provided by the data provider and we going to download both dataset from the URL link described above.</p>
 <pre class="r"><code># set the URL for the download
 url_train_data &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv&quot;
 url_test_test &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv&quot;
@@ -148,22 +153,25 @@ if (!file.exists(file_training_set) || !file.exists(file_testing_set)){
     download.file(url_test_test, file_testing_set, method=&quot;curl&quot;)
 }
 
+# load into data.frame
 train.dataset.raw &lt;- read.csv(file_training_set, na.strings = c(&quot;NA&quot;, &quot;&quot;))
 test.dataset.raw &lt;- read.csv(file_testing_set, na.strings = c(&quot;NA&quot;, &quot;&quot;))</code></pre>
 </div>
 <div id="exploring-and-cleansing" class="section level3">
 <h3>2.2 Exploring and Cleansing</h3>
 <p>The downloaded dataset have the same variable which is 160 and difference numbers of observation data. The training dataset have 19622 observations data and the test dataset 20 have observations data. It is normal practices to have training dataset is larger than the test dataset.</p>
-<p>There are (160) variable (predictors) but we only need a few which will contribute to the accuracy of our prediction model later on. Refering to <strong><em>Appendix A - Dataset Structure for Raw Dataset</em></strong>, we found out there are a lot of variable contain only <strong>NA</strong>, <strong>#DIV/0!</strong> which is need to be remove from the dataset. There are 7 variables is used for data identificatoin such as <code>X</code>, <code>user_name</code>, <code>raw_timestamp_part_1</code>, <code>raw_timestamp_part_2</code>, <code>cvtd_timestamp</code>, <code>new_window</code> and <code>num_window</code> and need to be remove as well.</p>
+<p>There are (160) variable (predictors) but we only need a few which will contribute to the accuracy of our prediction model later on. Refering to <strong><em>Appendix A - Dataset Structure for Raw Dataset</em></strong>, we found out there are a lot of variable contain only <strong>NA</strong>, <strong>#DIV/0!</strong> which is should be remove from the dataset. There are 7 variables is used for data identificatoin such as <code>X</code>, <code>user_name</code>, <code>raw_timestamp_part_1</code>, <code>raw_timestamp_part_2</code>, <code>cvtd_timestamp</code>, <code>new_window</code> and <code>num_window</code> need to be remove as well.</p>
 <pre class="r"><code>##Remove NA column &amp; column 1-7 as identifier column
 train.dataset.clean &lt;- train.dataset.raw[, colSums(is.na(train.dataset.raw)) == 0]
 train.dataset.clean &lt;- train.dataset.clean[, -c(1:7)]
 
+##Remove NA column &amp; column 1-7 as identifier column
 test.dataset.clean &lt;- test.dataset.raw[, colSums(is.na(test.dataset.raw)) == 0]
 test.dataset.clean &lt;- test.dataset.clean[, -c(1:7)]</code></pre>
-<p>Now, we only have 53 variable for both datasats and store it in the new data frame known as <code>train.dataset.clean</code> &amp; <code>test.dataset.clean</code>. Detail dataset structure please refer to <strong><em>Appendix B - List of Variable for Clean Dataset</em></strong></p>
-<p>Exploring the classes data it shows that the <em>classe A</em> have more records compare to other classes. Based on the <strong><em>Appendix C - Histrogram</em></strong> and the table below <em>classe A</em> have more 1000 records compared to other classes.</p>
-<pre class="r"><code>table(train.dataset.clean$classe)</code></pre>
+<p>Now, we only have 53 variable for both datasets and store it in the new data frame known as <code>train.dataset.clean</code> &amp; <code>test.dataset.clean</code>. Detail dataset structure please refer to <strong><em>Appendix B - List of Variable for Clean Dataset</em></strong></p>
+<p>Exploring the classes data it shows that the <em>classe A</em> have more records compare to other classes. Based on the <strong><em>Appendix C - Histrogram</em></strong> and the table below; <em>classe A</em> have more than 1000 records compared to other classes.</p>
+<pre class="r"><code>## display records into table by classe
+table(train.dataset.clean$classe)</code></pre>
 <pre><code>## 
 ##    A    B    C    D    E 
 ## 5580 3797 3422 3216 3607</code></pre>
@@ -187,8 +195,12 @@ crossvalidationset &lt;- train.dataset.clean[-inTrain,]</code></pre>
 <h3>3.2 Random Forest</h3>
 <pre class="r"><code>set.seed(1235)
 
-model.fit &lt;- randomForest(classe ~ ., data=trainset, method=&quot;class&quot;, importance=TRUE, proximity=TRUE, ntree=30)
+## create proediction model using Random Forest Algorithm
+model.fit &lt;- randomForest(classe ~ ., data=trainset, method=&quot;class&quot;, importance=TRUE, 
+                          proximity=TRUE, ntree=30)
 rf.predict &lt;- predict(model.fit, crossvalidationset)
+
+## evaluate prediction model
 confusion.matrix &lt;- confusionMatrix(rf.predict, crossvalidationset$classe)</code></pre>
 <p>The cross validation check shows that the accuracy is 99%. The detail can be refered at <strong><em>Appendix E - Confusion Matrix Output</em></strong>.</p>
 </div>
@@ -202,8 +214,8 @@ final.predict</code></pre>
 ##  B  A  B  A  A  E  D  B  A  A  B  C  B  A  E  E  A  B  B  B 
 ## Levels: A B C D E</code></pre>
 </div>
-<div id="refereces" class="section level2">
-<h2>Refereces</h2>
+<div id="references" class="section level2">
+<h2>References</h2>
 <p>Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. Wearable Computing: Accelerometers’ Data Classification of Body Postures and Movements. Proceedings of 21st Brazilian Symposium on Artificial Intelligence. Advances in Artificial Intelligence - SBIA 2012. In: Lecture Notes in Computer Science. , pp. 52- 61. Curitiba, PR: Springer Berlin / Heidelberg, 2012. ISBN 978-3-642-34458-9. DOI: 10.1007/978-3-642- 34459-6_6.</p>
 
 <hr />
@@ -356,14 +368,14 @@ final.predict</code></pre>
 ##                      Number of trees: 30
 ## No. of variables tried at each split: 7
 ## 
-##         OOB estimate of  error rate: 1.18%
+##         OOB estimate of  error rate: 1.08%
 ## Confusion matrix:
 ##      A    B    C    D    E class.error
-## A 3894    6    2    4    0 0.003072197
-## B   33 2604   13    2    6 0.020316027
-## C    0   24 2361    7    4 0.014607679
-## D    1    1   39 2206    5 0.020426288
-## E    0    2    6    7 2510 0.005940594</code></pre>
+## A 3897    5    1    0    2 0.002048656
+## B   29 2612   14    2    1 0.017306245
+## C    2   24 2361    9    0 0.014607679
+## D    1    0   36 2212    3 0.017761989
+## E    1    5    7    6 2506 0.007524752</code></pre>
 </div>
 <div id="appendix-e---confusion-matrix-output" class="section level2">
 <h2>Appendix E - Confusion Matrix Output</h2>
@@ -372,11 +384,11 @@ final.predict</code></pre>
 ## 
 ##           Reference
 ## Prediction    A    B    C    D    E
-##          A 1674    3    0    0    0
-##          B    0 1133    8    0    1
-##          C    0    3 1013   15    1
-##          D    0    0    5  949    2
-##          E    0    0    0    0 1078
+##          A 1673    7    0    0    0
+##          B    0 1127    9    0    0
+##          C    0    4 1016   11    2
+##          D    1    1    1  951    0
+##          E    0    0    0    2 1080
 ## 
 ## Overall Statistics
 ##                                           
@@ -391,14 +403,14 @@ final.predict</code></pre>
 ## Statistics by Class:
 ## 
 ##                      Class: A Class: B Class: C Class: D Class: E
-## Sensitivity            1.0000   0.9947   0.9873   0.9844   0.9963
-## Specificity            0.9993   0.9981   0.9961   0.9986   1.0000
-## Pos Pred Value         0.9982   0.9921   0.9816   0.9927   1.0000
-## Neg Pred Value         1.0000   0.9987   0.9973   0.9970   0.9992
+## Sensitivity            0.9994   0.9895   0.9903   0.9865   0.9982
+## Specificity            0.9983   0.9981   0.9965   0.9994   0.9996
+## Pos Pred Value         0.9958   0.9921   0.9835   0.9969   0.9982
+## Neg Pred Value         0.9998   0.9975   0.9979   0.9974   0.9996
 ## Prevalence             0.2845   0.1935   0.1743   0.1638   0.1839
-## Detection Rate         0.2845   0.1925   0.1721   0.1613   0.1832
-## Detection Prevalence   0.2850   0.1941   0.1754   0.1624   0.1832
-## Balanced Accuracy      0.9996   0.9964   0.9917   0.9915   0.9982</code></pre>
+## Detection Rate         0.2843   0.1915   0.1726   0.1616   0.1835
+## Detection Prevalence   0.2855   0.1930   0.1755   0.1621   0.1839
+## Balanced Accuracy      0.9989   0.9938   0.9934   0.9930   0.9989</code></pre>
 </div>
 </div>
 
