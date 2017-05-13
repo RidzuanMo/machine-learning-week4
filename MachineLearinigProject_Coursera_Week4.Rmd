@@ -2,7 +2,9 @@
 title: "Machine Learning Project - Cousera Week 4"
 author: "Ridzuan Mohamad"
 date: "5/11/2017"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -19,29 +21,41 @@ library(rpart)
 library(e1071)
 ```
 
-## Overview
+## 1. Overview
 
-## Data Exploratory Analysis
+## 2. Data Exploratory Analysis
 
-### Dataset Description
+### 2.1 Data Loading
 
-###Data Loading, Exploring and Cleansing
-
-The tarining dan test dataset is provided by the data provider and we going to download both dataset form the url (`https://d396qusza40orc.cloudfront.net/predmachlearn/`).
+The training dan test dataset is provided by the data provider and we going to download both dataset form the url (`https://d396qusza40orc.cloudfront.net/predmachlearn/`).
 
 ```{r}
 # set the URL for the download
 url_train_data <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
 url_test_test <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
 
+file_training_set = file.path("dataset","pml-training.csv")
+file_testing_set = file.path("dataset","pml-testing.csv")
+
 # download the datasets
-train.dataset.raw <- read.csv(url(url_train_data), na.strings = c("NA", ""))
-test.dataset.raw <- read.csv(url(url_test_test), na.strings = c("NA", ""))
+if (!file.exists(file_training_set) || !file.exists(file_testing_set)){
+    if(!dir.exists(file.path("dataset"))){
+        dir.create("dataset")
+    }
+    
+    download.file(url_train_data, file_training_set, method="curl")
+    download.file(url_test_test, file_testing_set, method="curl")
+}
+
+train.dataset.raw <- read.csv(file_training_set, na.strings = c("NA", ""))
+test.dataset.raw <- read.csv(file_testing_set, na.strings = c("NA", ""))
 ```
+
+### 2.2 Exploring and Cleansing
 
 The downloaded dataset have the same variable which is `r dim(train.dataset.raw)[2]` and difference numbers of observation data. The training dataset have `r dim(train.dataset.raw)[1]` observations data and the test dataset `r dim(test.dataset.raw)[1]` have observations data. It is normal practices to have training dataset is larger than the test dataset.
 
-There are (`r dim(train.dataset.raw)[2]`) variable (predictors) but we only need a few which will contribute to the accuracy of our prediction model later on. Refering to **_Appendix A - Dataset Structure for Raw Dataset_**, we found out there are a lot of variable contain only **NA**, **#DIV/0!** which is need to be remove from the dataset. There are 7 variables is used for data identificatoin such as `X`, `user_name`, `raw_timestamp_part_1`, `raw_timestamp_part_2 `, `cvtd_timestamp `, `new_window` and `num_window` and need to be remove as well.
+There are (`r dim(train.dataset.raw)[2]`) variable (predictors) but we only need a few which will contribute to the accuracy of our prediction model later on. Refering to **_Appendix A - Dataset Structure for Raw Dataset_**, we found out there are a lot of variable contain only **NA**, **#DIV/0!** which is should be remove from the dataset. There are 7 variables is used for data identificatoin such as `X`, `user_name`, `raw_timestamp_part_1`, `raw_timestamp_part_2 `, `cvtd_timestamp `, `new_window` and `num_window` need to be remove as well.
 
 ```{r}
 ##Remove NA column & column 1-7 as identifier column
@@ -52,43 +66,59 @@ test.dataset.clean <- test.dataset.raw[, colSums(is.na(test.dataset.raw)) == 0]
 test.dataset.clean <- test.dataset.clean[, -c(1:7)]
 ```
 
-Now, we only have `r dim(train.dataset.clean)[2]` variable for both datasats and store it in the new data frame known as `train.dataset.clean` & `test.dataset.clean`. Detail dataset structure please refer to **_Appendix B - Dataset Structure for Clean Dataset_**
+Now, we only have `r dim(train.dataset.clean)[2]` variable for both datasets and store it in the new data frame known as `train.dataset.clean` & `test.dataset.clean`. Detail dataset structure please refer to **_Appendix B - List of Variable for Clean Dataset_**
 
+Exploring the classes data it shows that the _classe A_ have more records compare to other classes. Based on the **_Appendix C - Histrogram_** and the table below; _classe A_ have more than 1000 records compared to other classes.
 
 ```{r}
 table(train.dataset.clean$classe)
 ```
 
-###Buidling Prediction Model
+## 3. Building Prediction Model
+
+The clean training dataset (_train.dataset.clean_) is split into two (2) partition :-
+
+1. Training Set ( _trainset_ ) - 70%
+2. Cross Validation Set ( _crossvalidationset_ ) - 30%
+
+The Training set mention above will be fit into **Random Forest Algorithm** to create a prediction model which will be used to make a prediction. The prediction model information can be refered on **_Appendix D - Prediction Model Summary_** The other sub-training set ( _Cross Validation_ ) will be used to evaluate the prediction model accuracy.
+
+### 3.1 Data Partioning
 
 ```{r}
-inTrain<-createDataPartition(y=train.dataset.clean$classe,p=0.7, list = FALSE)
-trainset<-train.dataset.clean[inTrain,]
-testset<-train.dataset.clean[-inTrain,]
+inTrain <- createDataPartition(y=train.dataset.clean$classe, p=0.7, list = FALSE)
+trainset <- train.dataset.clean[inTrain,]
+crossvalidationset <- train.dataset.clean[-inTrain,]
 ```
 
-###Random Forest
+### 3.2 Random Forest
 
 ```{r}
 set.seed(1235)
-mod.rf <- randomForest(classe~.,method="class", data=trainset, 
-                trControl= trainControl(method = "cv",number = 4,allowParallel = TRUE)
-            )
 
-cv.rf<-predict(mod.rf, testset)
-c1<-confusionMatrix(testset$classe, cv.rf)
-c1
+model.fit <- randomForest(classe ~ ., data=trainset, method="class", importance=TRUE, proximity=TRUE, ntree=30)
+rf.predict <- predict(model.fit, crossvalidationset)
+confusion.matrix <- confusionMatrix(rf.predict, crossvalidationset$classe)
 ```
 
-###Decision Trees
+The cross validation check shows that the accuracy is `r format(confusion.matrix$overall[1]*100, digits=2)`%. The detail can be refered at **_Appendix E - Confusion Matrix Output_**.
+
+## 4. Applying Model to Test Data
+
+Fit the clean test dataset into the prediction model and print the output.
 
 ```{r}
-# model fit
-#decision_tree <- rpart(classe ~ ., data=train.dataset, method="class")
-#fancyRpartPlot(decision_tree)
+final.predict <- predict(model.fit, test.dataset.clean)
+final.predict
 ```
 
-## Applying Model to Test Data
+## References
+
+Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. Wearable Computing: Accelerometers’
+Data Classification of Body Postures and Movements. Proceedings of 21st Brazilian Symposium on Artificial
+Intelligence. Advances in Artificial Intelligence - SBIA 2012. In: Lecture Notes in Computer Science. , pp. 52-
+61. Curitiba, PR: Springer Berlin / Heidelberg, 2012. ISBN 978-3-642-34458-9. DOI: 10.1007/978-3-642-
+34459-6_6.
 
 \newpage
 ---
@@ -101,13 +131,13 @@ c1
 str(train.dataset.raw)
 ```
 
-## Appendix B - Dataset Structure for Raw Dataset 
+## Appendix B - List of Variable for Clean Dataset 
 
 ```{r}
-str(train.dataset.clean)
+names(train.dataset.clean)
 ```
 
-## Appendix c - Histogram 
+## Appendix C - Histogram 
 
 ```{r, warning=FALSE}
 ggplot(data = train.dataset.clean, aes(x=classe)) +
@@ -115,4 +145,16 @@ ggplot(data = train.dataset.clean, aes(x=classe)) +
     scale_x_discrete(name = "classe") +
     scale_y_continuous(name = "count") +
     ggtitle("Classes")
+```
+
+## Appendix D - Prediction Model Summary
+
+```{r, warning=FALSE}
+model.fit
+```
+
+## Appendix E - Confusion Matrix Output
+
+```{r, warning=FALSE}
+confusion.matrix
 ```
